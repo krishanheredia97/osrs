@@ -1,24 +1,33 @@
-import tkinter as tk
 import asyncio
 import time
 import random
 import win32api
 import win32con
-import win32gui
+import os
+from dotenv import load_dotenv
+import discord
+from discord.ext import commands
+from discord import ButtonStyle
+from discord.ui import Button, View
 from utils.capture import capture_window_info
 from color_coords import get_color_coordinates
 
+load_dotenv()
+
+SERVER_ID = 1271171467287068693
+TUSK_TOKEN = os.getenv('TUSK_TOKEN')
+
+intents = discord.Intents.default()
+intents.message_content = True
+bot = commands.Bot(command_prefix='!', intents=intents)
+
 
 class SeedDibberBot:
-    def __init__(self, root):
-        self.root = root
-        self.root.title("Seed Dibber Bot")
-        self.root.geometry("150x150")
+    def __init__(self):
         self.running = False
         self.start_time = None
-
-        self.start_button = tk.Button(root, text="Start", command=self.start, height=2, width=10)
-        self.start_button.pack(expand=True)
+        self.actions_performed = 0
+        self.action_limit = 200
 
         self.color_dict = {
             "green": "FF00FF00",
@@ -29,19 +38,20 @@ class SeedDibberBot:
         self.color_coords = None
         self.window_info = None
 
-    def start(self):
+    async def start(self, action_limit=None):
         if not self.running:
             self.running = True
             self.start_time = time.time()
-            print("Starting in 3 seconds...")
-            self.root.after(3000, self.run_bot)
+            self.actions_performed = 0
+            if action_limit is not None:
+                self.action_limit = action_limit
+            print(f"Starting bot with action limit: {self.action_limit}")
+            await asyncio.sleep(3)
+            return await self.run_bot()
 
     def stop(self):
         self.running = False
         print("Stopping bot...")
-
-    def run_bot(self):
-        asyncio.run(self.bot_loop())
 
     def window_to_screen_coords(self, x, y):
         if self.window_info:
@@ -57,7 +67,8 @@ class SeedDibberBot:
                 y = random.randint(coords[1], coords[3])
                 screen_x, screen_y = self.window_to_screen_coords(x, y)
                 await self.click_at_coords(screen_x, screen_y)
-                print(f"{action_name} at window coordinates ({x}, {y}), screen coordinates ({screen_x}, {screen_y})")
+                if color in ["green", "blue"]:
+                    print(f"Clicked on {color}")  # Simplified print statement
             else:
                 print(f"Could not find coordinates for {color}")
         else:
@@ -75,12 +86,12 @@ class SeedDibberBot:
         await asyncio.sleep(random.uniform(0.05, 0.1))
         win32api.keybd_event(key, 0, win32con.KEYEVENTF_KEYUP, 0)
 
-    async def bot_loop(self):
+    async def run_bot(self):
         try:
             self.window_info = capture_window_info()
             self.color_coords = get_color_coordinates(self.color_dict)
 
-            while self.running:
+            while self.running and self.actions_performed < self.action_limit:
                 # 1. Click on pink
                 await self.perform_action("pink", "Clicking on pink")
                 # 2. Wait 1 second
@@ -110,27 +121,67 @@ class SeedDibberBot:
                     await self.perform_action("blue", "Clicking on blue")
                     # 4. Wait 0.3 seconds
                     await asyncio.sleep(0.3)
+                    self.actions_performed += 1
+                    print(f"Actions performed: {self.actions_performed}")
 
-                # Check if 60 minutes have passed
-                elapsed_time = time.time() - self.start_time
-                if elapsed_time >= 3600:
-                    print("60 minutes elapsed. Stopping bot.")
-                    self.stop()
-                    break
+                    if self.actions_performed >= self.action_limit:
+                        break
 
             if not self.running:
                 print("Bot stopped.")
+            else:
+                print(f"Action limit of {self.action_limit} reached. Stopping bot.")
+
+            self.stop()
+            return f"Bot finished its run. Total actions performed: {self.actions_performed}"
 
         except Exception as e:
             print(f"An error occurred: {str(e)}")
             self.stop()
+            return f"An error occurred: {str(e)}"
 
 
-def main():
-    root = tk.Tk()
-    bot = SeedDibberBot(root)
-    root.mainloop()
+dibber_bot = SeedDibberBot()
+
+
+class StopButton(Button):
+    def __init__(self, bot_instance):
+        super().__init__(label="Stop Dibber", style=ButtonStyle.danger)
+        self.bot_instance = bot_instance
+
+    async def callback(self, interaction: discord.Interaction):
+        if self.bot_instance.running:
+            self.bot_instance.stop()
+            await interaction.response.send_message("Seed Dibber Bot has been stopped.")
+
+            # Purge all messages in the channel
+            await interaction.channel.purge()
+        else:
+            await interaction.response.send_message("Bot is not currently running!")
+
+
+@bot.event
+async def on_ready():
+    print(f'{bot.user} has connected to Discord!')
+
+
+@bot.command(name='dibber')
+async def dibber_command(ctx, action_limit: int = 200):
+    if ctx.guild.id != SERVER_ID:
+        return
+
+    if dibber_bot.running:
+        await ctx.send("Bot is already running!")
+        return
+
+    view = View()
+    stop_button = StopButton(dibber_bot)
+    view.add_item(stop_button)
+
+    await ctx.send(f"Starting Seed Dibber Bot with action limit: {action_limit}", view=view)
+    result = await dibber_bot.start(action_limit)
+    await ctx.send(result)
 
 
 if __name__ == "__main__":
-    main()
+    bot.run(TUSK_TOKEN)

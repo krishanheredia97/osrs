@@ -117,7 +117,7 @@ class SuperheatBot:
             await self.bot_loop()
 
             elapsed_time = time.time() - self.start_time
-            if elapsed_time >= 14000:  # 60 minutes
+            if elapsed_time >= 12000:  # 60 minutes
                 print("60 minutes elapsed. Stopping bot.")
                 self.stop()
                 break

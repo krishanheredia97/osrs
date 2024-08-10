@@ -3,3 +3,4 @@ old_scripts
 testing
 training_data
 test_mouse.py
+.env

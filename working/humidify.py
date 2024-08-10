@@ -26,7 +26,7 @@ class SuperheatBot:
         # Define color dictionary
         self.color_dict = {
             "orange": "FFFF7300",
-            "green": "FF00FF00"
+            "red": "FFFF0000"
         }
 
         # Call these functions once to get the window info and color coordinates
@@ -73,9 +73,9 @@ class SuperheatBot:
 
     async def bot_loop(self):
         orange_coords = self.color_coords['orange']
-        green_coords = self.color_coords['green']
+        red_coords = self.color_coords['red']
 
-        if not orange_coords or not green_coords:
+        if not orange_coords or not red_coords:
             print("Could not find required color coordinates. Stopping bot.")
             self.stop()
             return
@@ -87,7 +87,7 @@ class SuperheatBot:
         await asyncio.sleep(2)
 
         # Bank items
-        await self.perform_action(green_coords, "Banking items")
+        await self.perform_action(red_coords, "Banking items")
         await asyncio.sleep(1)
 
         # Get items
@@ -104,7 +104,7 @@ class SuperheatBot:
         await asyncio.sleep(1)
 
         # Cast spell
-        await self.perform_action(green_coords, "Casting spell")
+        await self.perform_action(red_coords, "Casting spell")
         await asyncio.sleep(random.uniform(3.5, 5))
 
         win32api.SetCursorPos(original_mouse_pos)
