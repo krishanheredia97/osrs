@@ -2,8 +2,8 @@ import cv2
 import numpy as np
 
 # Load the full image and template image
-full_image_path = r"C:\Users\danie\PycharmProjects\osrs\training_data\testing\full.png"
-template_path = r"C:\Users\danie\PycharmProjects\osrs\training_data\testing\user_button.png"
+full_image_path = r"/training_data/testing/full.png"
+template_path = r"/training_data/testing/user_button.png"
 
 full_image = cv2.imread(full_image_path)
 template = cv2.imread(template_path)
@@ -37,7 +37,7 @@ for loc in zip(*locations[::-1]):
     cv2.rectangle(full_image, top_left, bottom_right, (0, 255, 0), 2)
 
 # Save the result image with rectangles drawn
-result_image_path = r"C:\Users\danie\PycharmProjects\osrs\training_data\testing\result.png"
+result_image_path = r"/training_data/testing/result.png"
 cv2.imwrite(result_image_path, full_image)
 
 print(f"Result image saved to: {result_image_path}")

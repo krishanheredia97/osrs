@@ -6,7 +6,7 @@ import win32gui
 import win32api
 import win32con
 from utils.capture import capture_window_info
-from color_coords import get_color_coordinates
+from utils.color_coords import get_color_coordinates
 
 class SuperheatBot:
     def __init__(self, root):

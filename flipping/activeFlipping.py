@@ -1,38 +1,24 @@
 import requests
-import tkinter as tk
-from tkinter import ttk
+import json
+from flask import Flask, render_template, send_from_directory
 import time
-import threading
-from datetime import datetime, timedelta
+from datetime import datetime
+import os
 
+app = Flask(__name__)
 
 class OSRSFlippingCalculator:
     def __init__(self):
-        self.root = tk.Tk()
-        self.root.title("OSRS Active Flipping Calculator")
-        self.root.geometry("1200x600")
-
         self.price_limit = 10_000_000  # 10m gp
         self.min_profit = 10_000  # 10k gp
         self.refresh_interval = 5  # 5 seconds
         self.max_trade_age = 5 * 60  # 5 minutes in seconds
+        self.items_data = self.load_items_data()
 
-        self.create_widgets()
-        self.start_auto_refresh()
-
-    def create_widgets(self):
-        refresh_button = ttk.Button(self.root, text="Refresh Now", command=self.refresh_data)
-        refresh_button.pack(pady=10)
-
-        columns = ("Item", "Buy Price", "Sell Price", "Margin", "ROI (%)", "Last Buy", "Last Sell")
-        self.tree = ttk.Treeview(self.root, columns=columns, show="headings")
-        for col in columns:
-            self.tree.heading(col, text=col)
-            self.tree.column(col, width=150, anchor="center")
-        self.tree.pack(fill=tk.BOTH, expand=True)
-
-        self.status_label = ttk.Label(self.root, text="Status: Ready")
-        self.status_label.pack(pady=10)
+    def load_items_data(self):
+        with open('items.json', 'r') as f:
+            items_list = json.load(f)
+        return {str(item['id']): item for item in items_list}
 
     def get_latest_prices(self):
         url = "https://prices.runescape.wiki/api/v1/osrs/latest"
@@ -56,63 +42,62 @@ class OSRSFlippingCalculator:
             high_time = prices.get('highTime')
 
             if all([low_price, high_price, low_time, high_time]) and low_price <= self.price_limit:
-                # Check if the item has been traded in the last 5 minutes
                 if current_time - low_time <= self.max_trade_age and current_time - high_time <= self.max_trade_age:
                     margin = high_price - low_price - (high_price * 0.01)  # Subtracting 1% of high price
                     if margin >= self.min_profit:
                         roi = (margin / low_price) * 100
+                        item_name = self.get_item_name(item_id)
+                        icon_path = self.get_item_icon(item_id)
                         opportunities.append({
                             'item_id': item_id,
+                            'name': item_name,
+                            'icon': icon_path,
                             'low_price': low_price,
                             'high_price': high_price,
                             'margin': margin,
                             'roi': roi,
-                            'low_time': low_time,
-                            'high_time': high_time
+                            'low_time': self.format_time_ago(current_time - low_time),
+                            'high_time': self.format_time_ago(current_time - high_time)
                         })
 
         return sorted(opportunities, key=lambda x: x['margin'], reverse=True)[:20]
 
-    def refresh_data(self):
-        self.status_label.config(text="Status: Refreshing...")
-        self.root.update()
+    def get_item_name(self, item_id):
+        item_data = self.items_data.get(str(item_id))
+        return item_data['name'] if item_data else f"Unknown Item ({item_id})"
 
-        data = self.get_latest_prices()
-        if data:
-            opportunities = self.calculate_flipping_opportunities(data)
-            self.update_treeview(opportunities)
-            self.status_label.config(text=f"Status: Last updated at {time.strftime('%H:%M:%S')}")
+    def get_item_icon(self, item_id):
+        icon_path = f"icons/{item_id}.png"
+        if os.path.exists(icon_path):
+            return icon_path
+        return "icons/default.png"  # Assuming you have a default icon
+
+    def format_time_ago(self, seconds):
+        if seconds < 60:
+            return f"{seconds}s ago"
+        elif seconds < 3600:
+            return f"{seconds // 60}m ago"
+        elif seconds < 86400:
+            hours = seconds // 3600
+            minutes = (seconds % 3600) // 60
+            return f"{hours}:{minutes:02d}h ago"
         else:
-            self.status_label.config(text="Status: Error fetching data")
+            return f"{seconds // 86400}d ago"
 
-    def update_treeview(self, opportunities):
-        self.tree.delete(*self.tree.get_children())
-        for opp in opportunities:
-            last_buy_time = datetime.fromtimestamp(opp['low_time']).strftime('%H:%M:%S')
-            last_sell_time = datetime.fromtimestamp(opp['high_time']).strftime('%H:%M:%S')
-            self.tree.insert("", "end", values=(
-                opp['item_id'],
-                f"{opp['low_price']:,}",
-                f"{opp['high_price']:,}",
-                f"{opp['margin']:,.0f}",
-                f"{opp['roi']:.2f}%",
-                last_buy_time,
-                last_sell_time
-            ))
+calculator = OSRSFlippingCalculator()
 
-    def start_auto_refresh(self):
-        def auto_refresh():
-            while True:
-                self.refresh_data()
-                time.sleep(self.refresh_interval)
+@app.route('/')
+def index():
+    data = calculator.get_latest_prices()
+    if data:
+        opportunities = calculator.calculate_flipping_opportunities(data)
+        return render_template('index.html', opportunities=opportunities)
+    else:
+        return "Error fetching data", 500
 
-        thread = threading.Thread(target=auto_refresh, daemon=True)
-        thread.start()
-
-    def run(self):
-        self.root.mainloop()
-
+@app.route('/icons/<path:filename>')
+def serve_icon(filename):
+    return send_from_directory('icons', filename)
 
 if __name__ == "__main__":
-    app = OSRSFlippingCalculator()
-    app.run()
+    app.run(debug=True)

@@ -10,7 +10,7 @@ from discord.ext import commands
 from discord import ButtonStyle
 from discord.ui import Button, View
 from utils.capture import capture_window_info
-from color_coords import get_color_coordinates
+from utils.color_coords import get_color_coordinates
 
 load_dotenv()
 
@@ -165,8 +165,8 @@ async def on_ready():
     print(f'{bot.user} has connected to Discord!')
 
 
-@bot.command(name='dibber')
-async def dibber_command(ctx, action_limit: int = 200):
+@bot.command(name='dib')
+async def dib_command(ctx, action_limit: int = 200):
     if ctx.guild.id != SERVER_ID:
         return
 

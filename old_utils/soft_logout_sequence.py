@@ -30,7 +30,7 @@ def logout_sequence():
     window_handle = window_info[0][0]  # Use the first window found
 
     # Step 2: Find exit button coordinates
-    exit_button_path = r"C:\Users\danie\PycharmProjects\osrs\training_data\interface\exit_button.png"
+    exit_button_path = r"/training_data/interface/exit_button.png"
     exit_coords = find_template_coordinates(window_handle, exit_button_path)
 
     if exit_coords is None:
@@ -43,7 +43,7 @@ def logout_sequence():
     move_mouse_and_click(window_handle, *exit_coords)
 
     # Step 4: Find logout button coordinates
-    logout_button_path = r"C:\Users\danie\PycharmProjects\osrs\training_data\interface\logout_button.png"
+    logout_button_path = r"/training_data/interface/logout_button.png"
     logout_coords = find_template_coordinates(window_handle, logout_button_path)
 
     if logout_coords is None:

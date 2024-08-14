@@ -13,7 +13,7 @@ import numpy as np
 import cv2
 import io
 from utils.window_handle import get_runelite_handle
-from color_coords import get_color_coordinates
+from utils.color_coords import get_color_coordinates
 
 # Discord bot setup
 TOKEN = os.getenv('ARMINIO_TOKEN')

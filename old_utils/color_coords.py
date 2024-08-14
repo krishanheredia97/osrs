@@ -18,23 +18,21 @@ def find_largest_color_square(image, color):
     # Find the largest contour
     largest_contour = max(contours, key=cv2.contourArea, default=None)
 
-    div = 8
-
     if largest_contour is not None:
         x, y, w, h = cv2.boundingRect(largest_contour)
 
         # Calculate the center-most 50% of the square
-        center_x, center_y = x + w // div, y + h // div
-        new_w, new_h = w // div, h // div
-        new_x = center_x - new_w // div
-        new_y = center_y - new_h // div
+        center_x, center_y = x + w // 2, y + h // 2
+        new_w, new_h = w // 2, h // 2
+        new_x = center_x - new_w // 2
+        new_y = center_y - new_h // 2
 
         return (new_x, new_y, new_x + new_w, new_y + new_h)
 
     return None
 
 
-def get_color_coordinates(color_dict):
+def get_color_coordinates():
     # Capture window information
     window_info = capture_window_info()
 
@@ -44,17 +42,23 @@ def get_color_coordinates(color_dict):
     # Convert image from RGB to BGR (OpenCV uses BGR)
     image_bgr = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
 
-    result = {}
-    for color_name, color_code in color_dict.items():
-        # Convert hex color code to RGB
-        color_rgb = tuple(int(color_code[i:i+2], 16) for i in (2, 4, 6))
-        coords = find_largest_color_square(image_bgr, color_rgb)
-        result[color_name] = coords
+    # Find the largest green square
+    green_coords = find_largest_color_square(image_bgr, (0x26, 0xFF, 0x00))
+
+    # Find the largest pink square
+    pink_coords = find_largest_color_square(image_bgr, (0xFF, 0x00, 0xCA))
 
     # Print and return the coordinates
-    for color_name, coords in result.items():
-        print(f"{color_name.capitalize()} square coordinates:", coords)
+    print("Green square coordinates:", green_coords)
+    print("Pink square coordinates:", pink_coords)
 
-    result['window_rect'] = window_info['rect']
-    return result
+    return {
+        "green": green_coords,
+        "pink": pink_coords,
+        "window_rect": window_info['rect']
+    }
 
+
+if __name__ == "__main__":
+    color_coords = get_color_coordinates()
+    print("Window rectangle:", color_coords['window_rect'])

@@ -1,139 +1,89 @@
 import asyncio
-import random
 import time
-import keyboard
-import win32api
-import win32con
+from utils.clicks import ClickHelper
+from utils.hull_coords import get_color_coordinates as get_hull_coordinates
+from utils.color_coords import get_color_coordinates
+from utils.capture import capture_window_info
 import win32gui
-import tkinter as tk
-from color_coords import get_color_coordinates
-from template_coords import get_template_coordinates_wrapper
 
 
-class PlankMakeBot:
-    def __init__(self, root):
-        self.root = root
-        self.root.title("Plank Make Bot")
-        self.root.geometry("150x150")
-        self.running = False
+async def get_color_center_coords(color, color_dict, window_handle, use_hull=True):
+    coords_func = get_hull_coordinates if use_hull else get_color_coordinates
+    coords = coords_func(color_dict)
+    if color not in coords or coords[color] is None:
+        print(f"Error: Could not find coordinates for {color}")
+        return None
 
-        self.start_button = tk.Button(root, text="Start", command=self.start_bot, height=2, width=10)
-        self.start_button.pack(expand=True)
-
-        self.color_dict = {"pink": "FFFF00CA"}
-        self.template_paths = {
-            "mahogany_logs": r"C:\Users\danie\PycharmProjects\personal\media\sliced_icons\sliced_Mahogany_logs.webp",
-            "plank_make": r"C:\Users\danie\PycharmProjects\personal\media\original_icons\Plank_Make.webp",
-            "mahogany_logs_multi": r"C:\Users\danie\PycharmProjects\personal\media\original_icons\Mahogany_logs.webp"
-        }
-
-    def start_bot(self):
-        if not self.running:
-            self.running = True
-            self.start_button.config(state=tk.DISABLED)
-            print("Starting bot in 3 seconds...")
-            self.root.after(3000, self.run_bot)
-
-    def stop_bot(self):
-        self.running = False
-        self.start_button.config(state=tk.NORMAL)
-        print("Bot stopped.")
-
-    def random_sleep(self, min_time, max_time):
-        time.sleep(random.uniform(min_time, max_time))
-
-    def click(self, x, y, duration=0.1):
-        win32api.SetCursorPos((x, y))
-        self.random_sleep(0.1, 0.3)
-        win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0)
-        time.sleep(duration)
-        win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, 0, 0, 0, 0)
-
-    def press_key(self, key, duration=0.1):
-        if key == 'esc':
-            vk_code = win32con.VK_ESCAPE
-        else:
-            vk_code = ord(key.upper())
-
-        win32api.keybd_event(vk_code, 0, 0, 0)
-        time.sleep(duration)
-        win32api.keybd_event(vk_code, 0, win32con.KEYEVENTF_KEYUP, 0)
-
-    async def bot_loop(self):
-        print("Bot loop started")
-        color_coords = get_color_coordinates(self.color_dict)
-        template_coords = {name: get_template_coordinates_wrapper(path) for name, path in self.template_paths.items()}
-
-        window_rect = color_coords['window_rect']
-        print(f"Window rect: {window_rect}")
-
-        while self.running:
-            if keyboard.is_pressed('caps lock'):
-                print("Caps Lock pressed. Stopping bot.")
-                self.stop_bot()
-                break
-
-            # Click on pink twice
-            pink_coords = color_coords['pink']
-            if pink_coords:
-                screen_x = window_rect[0] + pink_coords[0]
-                screen_y = window_rect[1] + pink_coords[1]
-                self.click(screen_x, screen_y)
-                self.random_sleep(0.3, 0.5)
-                self.click(screen_x, screen_y)
-            else:
-                print("Pink color not found")
-
-            self.random_sleep(0.3, 0.5)
-
-            # Click on Mahogany logs
-            mahogany_coords = template_coords['mahogany_logs']['template']
-            if mahogany_coords:
-                screen_x = window_rect[0] + mahogany_coords[0]
-                screen_y = window_rect[1] + mahogany_coords[1]
-                self.click(screen_x, screen_y)
-            else:
-                print("Mahogany logs template not found")
-
-            self.random_sleep(0.3, 0.5)
-
-            # Press ESC key
-            self.press_key('esc')
-
-            self.random_sleep(0.3, 0.5)
-
-            # Click on Plank Make
-            plank_make_coords = template_coords['plank_make']['template']
-            if plank_make_coords:
-                screen_x = window_rect[0] + plank_make_coords[0]
-                screen_y = window_rect[1] + plank_make_coords[1]
-                self.click(screen_x, screen_y)
-            else:
-                print("Plank Make template not found")
-
-            self.random_sleep(0.3, 0.5)
-
-            # Click on any Mahogany logs (multi)
-            mahogany_multi_coords = template_coords['mahogany_logs_multi']['template']
-            if mahogany_multi_coords:
-                screen_x = window_rect[0] + mahogany_multi_coords[0]
-                screen_y = window_rect[1] + mahogany_multi_coords[1]
-                self.click(screen_x, screen_y)
-            else:
-                print("Mahogany logs (multi) template not found")
-
-            # Wait for 50-60 seconds
-            await asyncio.sleep(random.uniform(50, 60))
-
-    def run_bot(self):
-        asyncio.run(self.bot_loop())
+    coord = coords[color]
+    center_x = (coord[0] + coord[2]) // 2
+    center_y = (coord[1] + coord[3]) // 2
+    return win32gui.ClientToScreen(window_handle, (center_x, center_y))
 
 
-def main():
-    root = tk.Tk()
-    bot = PlankMakeBot(root)
-    root.mainloop()
+async def click_color(color, color_dict, window_handle, use_hull=True):
+    coords = await get_color_center_coords(color, color_dict, window_handle, use_hull)
+    if coords:
+        print(f"Clicking on {color}")
+        await ClickHelper.click_at_coords(*coords)
+    else:
+        print(f"Failed to click on {color}: coordinates not found")
+
+
+async def run_sequence(window_handle, color_dict):
+    # 1. Click once on orange
+    await asyncio.sleep(5)
+    await click_color("orange", color_dict, window_handle)
+
+    # 2. Wait 5 seconds
+    print("Waiting 5 seconds")
+    await asyncio.sleep(5)
+
+    # 3. Click on green
+    await click_color("green", color_dict, window_handle)
+
+    # 4. Wait 5 seconds
+    print("Waiting 5 seconds")
+    await asyncio.sleep(5)
+
+    # 5. Click on green again
+    await click_color("green", color_dict, window_handle)
+
+    print("Reached Temple")
+
+    # Loop to click green hull every 60 seconds for 10 minutes
+    start_time = time.time()
+    while time.time() - start_time < 600:  # 600 seconds = 10 minutes
+        print("Waiting 60 seconds before next green hull click")
+        await asyncio.sleep(60)
+        await click_color("green", color_dict, window_handle)
+
+    # After 10 minutes, click on blue
+    print("10 minutes passed. Clicking on blue.")
+    await click_color("blue", color_dict, window_handle, use_hull=False)
+
+
+async def main():
+    # Capture window info
+    window_info = capture_window_info()
+    window_handle = window_info['handle']
+
+    # Define color dictionary with updated green hull color and blue color
+    color_dict = {
+        "green": "FF26FF00",
+        "orange": "FFFF7300",
+        "blue": "FF0000FF"
+    }
+
+    try:
+        while True:
+            await run_sequence(window_handle, color_dict)
+            print("Restarting sequence")
+
+    except Exception as e:
+        print(f"An error occurred: {str(e)}")
+    except KeyboardInterrupt:
+        print("Script terminated by user")
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

@@ -2,5 +2,6 @@ action_paths
 old_scripts
 testing
 training_data
+old_utils
 test_mouse.py
 .env
