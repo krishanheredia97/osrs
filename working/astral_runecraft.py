@@ -37,7 +37,7 @@ async def run_workflow():
     }
 
     start_time = asyncio.get_event_loop().time()
-    duration = 60 * 60  # 60 minutes
+    duration = 60 * 180  # 60 minutes
 
     while asyncio.get_event_loop().time() - start_time < duration:
         try:

@@ -3,7 +3,7 @@ import numpy as np
 from utils.capture import capture_window_info
 
 
-def get_template_coordinates(template_path, threshold=0.7):
+def get_template_coordinates(template_path, threshold=0.4):
     # Capture window information
     window_info = capture_window_info()
 
@@ -41,3 +41,7 @@ def get_template_coordinates_wrapper(template_path):
     for template_name, coords in result.items():
         print(f"{template_name.capitalize()} coordinates:", coords)
     return result
+
+if __name__ == "__main__":
+    img = r"C:\Users\danie\Downloads\Lvl-6_Enchant.webp"
+    get_template_coordinates_wrapper(img)

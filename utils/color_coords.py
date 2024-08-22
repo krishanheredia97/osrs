@@ -57,4 +57,3 @@ def get_color_coordinates(color_dict):
 
     result['window_rect'] = window_info['rect']
     return result
-
